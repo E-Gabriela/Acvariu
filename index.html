@@ -1,426 +1,476 @@
 <!DOCTYPE html>
 <html lang="ro">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Acvariu" />
-  <title>Acvariul meu</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body {
-      width: 100%;
-      height: 100%;
-      background: #061520;
-      overflow: hidden;
-      touch-action: manipulation;
-      -webkit-user-select: none;
-      user-select: none;
-    }
-    canvas {
-      display: block;
-      width: 100vw;
-      height: 100vh;
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Acvariu" />
+<meta name="theme-color" content="#061520" />
+<link id="apple-icon" rel="apple-touch-icon" href="" />
+<title>Acvariul meu</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+width: 100%;
+height: 100%;
+background: #061520;
+overflow: hidden;
+touch-action: manipulation;
+-webkit-user-select: none;
+user-select: none;
+}
+canvas {
+display: block;
+width: 100vw;
+height: 100vh;
+}
+</style>
 </head>
 <body>
-  <canvas id="tank"></canvas>
+<canvas id="tank"></canvas>
 
-  <script>
-    (function () {
-      const canvas = document.getElementById("tank");
-      if (!canvas || !canvas.getContext) return;
-      const ctx = canvas.getContext("2d");
+<script>
+(function () {
+// Genereaza iconita pentru iPhone direct din canvas
+const iconCanvas = document.createElement("canvas");
+iconCanvas.width = 180;
+iconCanvas.height = 180;
+const ictx = iconCanvas.getContext("2d");
+const igrad = ictx.createLinearGradient(0, 0, 0, 180);
+igrad.addColorStop(0, "#0b2c42");
+igrad.addColorStop(1, "#041019");
+ictx.fillStyle = igrad;
+ictx.fillRect(0, 0, 180, 180);
 
-      let w = window.innerWidth || 390;
-      let h = window.innerHeight || 844;
-      let seaweeds = [];
-      let corals = [];
-      let fishes = [];
-      let crab = null;
-      let shrimp = null;
-      const bubbles = [];
-      const foods = [];
-      let time = 0;
+ictx.fillStyle = "#238a66";
+ictx.font = "bold 24px monospace";
+ictx.textAlign = "center";
+ictx.fillText(")", 42, 152);
+ictx.fillText("(", 45, 134);
 
-      function generateSeaweed() {
-        seaweeds = [];
-        const count = Math.max(7, Math.floor(w / 48));
-        const colors = ["#238a66", "#2ea378", "#3cb88a", "#1f7a5a"];
-        for (let i = 0; i < count; i++) {
-          seaweeds.push({
-            x: (w / count) * i + (Math.random() * 18 + 12),
-            levels: 3 + Math.floor(Math.random() * 3),
-            phase: Math.random() * Math.PI * 2,
-            color: colors[i % colors.length]
-          });
-        }
-      }
+ictx.fillStyle = "#7be0ff";
+ictx.font = "bold 34px monospace";
+ictx.fillText("><(((('>", 95, 92);
+
+ictx.strokeStyle = "rgba(160, 230, 255, 0.75)";
+ictx.lineWidth = 2;
+ictx.beginPath();
+ictx.arc(142, 62, 6, 0, Math.PI * 2);
+ictx.stroke();
+ictx.beginPath();
+ictx.arc(150, 44, 4, 0, Math.PI * 2);
+ictx.stroke();
+
+const appleIcon = document.getElementById("apple-icon");
+if (appleIcon) {
+appleIcon.href = iconCanvas.toDataURL("image/png");
+}
+
+// Activeaza modul offline daca exista sw.js
+if ("serviceWorker" in navigator) {
+window.addEventListener("load", function () {
+navigator.serviceWorker.register("./sw.js").catch(function () {});
+});
+}
+
+const canvas = document.getElementById("tank");
+if (!canvas || !canvas.getContext) return;
+const ctx = canvas.getContext("2d");
+
+let w = window.innerWidth || 390;
+let h = window.innerHeight || 844;
+let seaweeds = [];
+let corals = [];
+let fishes = [];
+let crab = null;
+let shrimp = null;
+const bubbles = [];
+const foods = [];
+let time = 0;
+
+function generateSeaweed() {
+seaweeds = [];
+const count = Math.max(7, Math.floor(w / 48));
+const colors = ["#238a66", "#2ea378", "#3cb88a", "#1f7a5a"];
+for (let i = 0; i < count; i++) {
+seaweeds.push({
+x: (w / count) * i + (Math.random() * 18 + 12),
+levels: 3 + Math.floor(Math.random() * 3),
+phase: Math.random() * Math.PI * 2,
+color: colors[i % colors.length]
+});
+}
+}
 
 function generateCorals() {
-        corals = [];
-        const coralTemplates = [
-          { lines: ["*   *", " . . ", "  |  "], color: "#ff758f" },
-          { lines: ["v   v", "  .  ", "  |  "], color: "#ff9e6d" },
-          { lines: ["o   o", "  Y  ", "  |  "], color: "#d291ff" },
-          { lines: ["* * *", " . . ", "  |  "], color: "#ff6b6b" }
-        ];
-        const count = Math.max(3, Math.floor(w / 105));
-        for (let i = 0; i < count; i++) {
-          const tpl = coralTemplates[i % coralTemplates.length];
-          corals.push({
-            x: (w / count) * i + (w / count) * 0.5 + (Math.random() * 20 - 10),
-            lines: tpl.lines,
-            color: tpl.color
-          });
-        }
-      }
+corals = [];
+const coralTemplates = [
+{ lines: ["* *", " . . ", " | "], color: "#ff758f" },
+{ lines: ["v v", " . ", " | "], color: "#ff9e6d" },
+{ lines: ["o o", " Y ", " | "], color: "#d291ff" },
+{ lines: ["* * *", " . . ", " | "], color: "#ff6b6b" }
+];
+const count = Math.max(3, Math.floor(w / 105));
+for (let i = 0; i < count; i++) {
+const tpl = coralTemplates[i % coralTemplates.length];
+corals.push({
+x: (w / count) * i + (w / count) * 0.5 + (Math.random() * 20 - 10),
+lines: tpl.lines,
+color: tpl.color
+});
+}
+}
 
-      function createFishes() {
-        const fishStyles = [
-          { shape: "><(((('>", color: "#7be0ff", size: 17 },
-          { shape: "><(((o>",  color: "#ff9f68", size: 16 },
-          { shape: "><(((*>",  color: "#ff7eb6", size: 16 },
-          { shape: "><>",      color: "#ffe66d", size: 18 },
-          { shape: "><)))'>",  color: "#8affc1", size: 16 },
-          { shape: "><((o>",   color: "#c792ea", size: 16 }
-        ];
+function createFishes() {
+const fishStyles = [
+{ shape: "><(((('>", color: "#7be0ff", size: 17 },
+{ shape: "><(((o>", color: "#ff9f68", size: 16 },
+{ shape: "><(((*>", color: "#ff7eb6", size: 16 },
+{ shape: "><>", color: "#ffe66d", size: 18 },
+{ shape: "><)))'>", color: "#8affc1", size: 16 },
+{ shape: "><((o>", color: "#c792ea", size: 16 }
+];
 
-        fishes = fishStyles.map(function (style, i) {
-          const dir = i % 2 === 0 ? 1 : -1;
-          const startY = h * (0.2 + (i / fishStyles.length) * 0.52);
-          return {
-            shape: style.shape,
-            color: style.color,
-            size: style.size,
-            x: w * (0.2 + Math.random() * 0.6),
-            y: startY,
-            baseY: startY,
-            speed: 0.45 + Math.random() * 0.35,
-            vx: dir * (0.45 + Math.random() * 0.35),
-            phase: Math.random() * Math.PI * 2,
-            targetFood: null,
-            scaredTimer: 0
-          };
-        });
-      }
-      function createBottomCreatures() {
-        crab = {
-          x: w * 0.3,
-          y: h - 10,
-          vx: 0.25,
-          speed: 0.25,
-          pauseTimer: 0,
-          shape: "V(o_o)V",
-          color: "#ff6b57",
-          size: 13
-        };
+fishes = fishStyles.map(function (style, i) {
+const dir = i % 2 === 0 ? 1 : -1;
+const startY = h * (0.2 + (i / fishStyles.length) * 0.52);
+return {
+shape: style.shape,
+color: style.color,
+size: style.size,
+x: w * (0.2 + Math.random() * 0.6),
+y: startY,
+baseY: startY,
+speed: 0.45 + Math.random() * 0.35,
+vx: dir * (0.45 + Math.random() * 0.35),
+phase: Math.random() * Math.PI * 2,
+targetFood: null,
+scaredTimer: 0
+};
+});
+}
 
-        shrimp = {
-          x: w * 0.7,
-          y: h - 11,
-          vx: -0.4,
-          speed: 0.4,
-          hopPhase: 0,
-          shape: "~(_o>",
-          color: "#ffb38a",
-          size: 13
-        };
-      }
+function createBottomCreatures() {
+crab = {
+x: w * 0.3,
+y: h - 10,
+vx: 0.25,
+speed: 0.25,
+pauseTimer: 0,
+shape: "V(o_o)V",
+color: "#ff6b57",
+size: 13
+};
 
-      function resize() {
-        const dpr = window.devicePixelRatio || 1;
-        w = window.innerWidth || 390;
-        h = window.innerHeight || 844;
-        canvas.width = Math.max(1, Math.floor(w * dpr));
-        canvas.height = Math.max(1, Math.floor(h * dpr));
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        generateSeaweed();
-        generateCorals();
-        if (crab) crab.y = h - 10;
-        if (shrimp) shrimp.y = h - 11;
-      }
+shrimp = {
+x: w * 0.7,
+y: h - 11,
+vx: -0.4,
+speed: 0.4,
+hopPhase: 0,
+shape: "~(_o>",
+color: "#ffb38a",
+size: 13
+};
+}
 
-      function spawnBubble(bx, by) {
-        bubbles.push({
-          x: bx,
-          y: by,
-          r: 1.5 + Math.random() * 2.5,
-          vy: 0.4 + Math.random() * 0.5,
-          drift: (Math.random() - 0.5) * 0.3,
-          alpha: 0.75
-        });
-      }
+function resize() {
+const dpr = window.devicePixelRatio || 1;
+w = window.innerWidth || 390;
+h = window.innerHeight || 844;
+canvas.width = Math.max(1, Math.floor(w * dpr));
+canvas.height = Math.max(1, Math.floor(h * dpr));
+ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+generateSeaweed();
+generateCorals();
+if (crab) crab.y = h - 10;
+if (shrimp) shrimp.y = h - 11;
+}
 
-      canvas.addEventListener("pointerdown", function (e) {
-        const rect = canvas.getBoundingClientRect();
-        const tapX = e.clientX - rect.left;
-        const tapY = e.clientY - rect.top;
+function spawnBubble(bx, by) {
+bubbles.push({
+x: bx,
+y: by,
+r: 1.5 + Math.random() * 2.5,
+vy: 0.4 + Math.random() * 0.5,
+drift: (Math.random() - 0.5) * 0.3,
+alpha: 0.75
+});
+}
 
-        let touchedFish = null;
-        for (let i = 0; i < fishes.length; i++) {
-          const f = fishes[i];
-          const dist = Math.hypot(tapX - f.x, tapY - f.y);
-          if (dist <= 32) {
-            touchedFish = f;
-            break;
-          }
-        }
-        if (touchedFish) {
-          touchedFish.targetFood = null;
-          touchedFish.scaredTimer = 55;
-          const awayDir = touchedFish.x >= tapX ? 1 : -1;
-          touchedFish.vx = awayDir * (touchedFish.speed * 3.2);
-          for (let b = 0; b < 3; b++) {
-            spawnBubble(touchedFish.x + (Math.random() - 0.5) * 16, touchedFish.y - 6 - b * 4);
-          }
-          return;
-        }
+canvas.addEventListener("pointerdown", function (e) {
+const rect = canvas.getBoundingClientRect();
+const tapX = e.clientX - rect.left;
+const tapY = e.clientY - rect.top;
 
-        const food = {
-          x: tapX,
-          y: tapY,
-          vy: 0.35,
-          eaten: false
-        };
-        foods.push(food);
+let touchedFish = null;
+for (let i = 0; i < fishes.length; i++) {
+const f = fishes[i];
+const dist = Math.hypot(tapX - f.x, tapY - f.y);
+if (dist <= 32) {
+touchedFish = f;
+break;
+}
+}
 
-        const freeFishes = fishes.filter(function (f) {
-          return !f.targetFood || f.targetFood.eaten || f.scaredTimer > 0;
-        });
-        const pool = freeFishes.length > 0 ? freeFishes : fishes;
-        if (pool.length > 0) {
-          const chosen = pool[Math.floor(Math.random() * pool.length)];
-          chosen.targetFood = food;
-        }
-      });
+if (touchedFish) {
+touchedFish.targetFood = null;
+touchedFish.scaredTimer = 55;
+const awayDir = touchedFish.x >= tapX ? 1 : -1;
+touchedFish.vx = awayDir * (touchedFish.speed * 3.2);
+for (let b = 0; b < 3; b++) {
+spawnBubble(touchedFish.x + (Math.random() - 0.5) * 16, touchedFish.y - 6 - b * 4);
+}
+return;
+}
 
-      resize();
-      createFishes();
-      createBottomCreatures();
-      window.addEventListener("resize", resize);
+const food = {
+x: tapX,
+y: tapY,
+vy: 0.35,
+eaten: false
+};
+foods.push(food);
 
-      function drawCorals() {
-        ctx.font = "bold 13px monospace";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "bottom";
+const freeFishes = fishes.filter(function (f) {
+return !f.targetFood || f.targetFood.eaten || f.scaredTimer > 0;
+});
+const pool = freeFishes.length > 0 ? freeFishes : fishes;
+if (pool.length > 0) {
+const chosen = pool[Math.floor(Math.random() * pool.length)];
+chosen.targetFood = food;
+}
+});
 
-        for (let i = 0; i < corals.length; i++) {
-          const c = corals[i];
-          ctx.fillStyle = c.color;
-          for (let row = 0; row < c.lines.length; row++) {
-            const lineIndexFromBottom = c.lines.length - 1 - row;
-            const yPos = h - 10 - lineIndexFromBottom * 12;
-            ctx.fillText(c.lines[row], c.x, yPos);
-          }
-        }
-      }
+resize();
+createFishes();
+createBottomCreatures();
+window.addEventListener("resize", resize);
 
-      function drawSeaweed() {
-        ctx.font = "bold 14px monospace";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "bottom";
+function drawCorals() {
+ctx.font = "bold 13px monospace";
+ctx.textAlign = "center";
+ctx.textBaseline = "bottom";
 
-        for (let i = 0; i < seaweeds.length; i++) {
-          const sw = seaweeds[i];
-          ctx.fillStyle = sw.color;
+for (let i = 0; i < corals.length; i++) {
+const c = corals[i];
+ctx.fillStyle = c.color;
+for (let row = 0; row < c.lines.length; row++) {
+const lineIndexFromBottom = c.lines.length - 1 - row;
+const yPos = h - 10 - lineIndexFromBottom * 12;
+ctx.fillText(c.lines[row], c.x, yPos);
+}
+}
+}
 
-          for (let lvl = 0; lvl < sw.levels; lvl++) {
-            const swayFactor = Math.pow(lvl + 1, 1.35) * 1.4;
-            const offsetX = Math.sin(time * 1.1 + sw.phase + lvl * 0.5) * swayFactor;
-            const yPos = h - 10 - lvl * 13;
-            const char = offsetX >= 0 ? ")" : "(";
-            ctx.fillText(char, sw.x + offsetX, yPos);
-          }
-        }
-      }
-      function updateAndDrawBottomCreatures() {
-        if (crab) {
-          if (crab.pauseTimer > 0) {
-            crab.pauseTimer--;
-          } else {
-            crab.x += crab.vx;
-            if (Math.random() < 0.006) {
-              crab.pauseTimer = 35 + Math.floor(Math.random() * 40);
-            }
-            const margin = 45;
-            if (crab.x > w - margin) {
-              crab.x = w - margin;
-              crab.vx = -crab.speed;
-            } else if (crab.x < margin) {
-              crab.x = margin;
-              crab.vx = crab.speed;
-            }
-          }
+function drawSeaweed() {
+ctx.font = "bold 14px monospace";
+ctx.textAlign = "center";
+ctx.textBaseline = "bottom";
 
-          ctx.save();
-          ctx.translate(crab.x, h - 9);
-          if (crab.vx < 0) {
-            ctx.scale(-1, 1);
-          }
-          ctx.font = "bold " + crab.size + "px monospace";
-          ctx.fillStyle = crab.color;
-          ctx.textAlign = "center";
-          ctx.textBaseline = "bottom";
-          ctx.fillText(crab.shape, 0, 0);
-          ctx.restore();
-        }
+for (let i = 0; i < seaweeds.length; i++) {
+const sw = seaweeds[i];
+ctx.fillStyle = sw.color;
 
-        if (shrimp) {
-          shrimp.x += shrimp.vx;
-          shrimp.hopPhase += 0.08;
-          const hopY = Math.abs(Math.sin(shrimp.hopPhase)) * 3.5;
+for (let lvl = 0; lvl < sw.levels; lvl++) {
+const swayFactor = Math.pow(lvl + 1, 1.35) * 1.4;
+const offsetX = Math.sin(time * 1.1 + sw.phase + lvl * 0.5) * swayFactor;
+const yPos = h - 10 - lvl * 13;
+const char = offsetX >= 0 ? ")" : "(";
+ctx.fillText(char, sw.x + offsetX, yPos);
+}
+}
+}
 
-          const margin = 35;
-          if (shrimp.x > w - margin) {
-            shrimp.x = w - margin;
-            shrimp.vx = -shrimp.speed;
-          } else if (shrimp.x < margin) {
-            shrimp.x = margin;
-            shrimp.vx = shrimp.speed;
-          }
+function updateAndDrawBottomCreatures() {
+if (crab) {
+if (crab.pauseTimer > 0) {
+crab.pauseTimer--;
+} else {
+crab.x += crab.vx;
+if (Math.random() < 0.006) {
+crab.pauseTimer = 35 + Math.floor(Math.random() * 40);
+}
+const margin = 45;
+if (crab.x > w - margin) {
+crab.x = w - margin;
+crab.vx = -crab.speed;
+} else if (crab.x < margin) {
+crab.x = margin;
+crab.vx = crab.speed;
+}
+}
 
-          ctx.save();
-          ctx.translate(shrimp.x, h - 10 - hopY);
-          if (shrimp.vx < 0) {
-            ctx.scale(-1, 1);
-          }
-          ctx.font = "bold " + shrimp.size + "px monospace";
-          ctx.fillStyle = shrimp.color;
-          ctx.textAlign = "center";
-          ctx.textBaseline = "bottom";
-          ctx.fillText(shrimp.shape, 0, 0);
-          ctx.restore();
-        }
-      }
-      function loop() {
-        time += 0.02;
+ctx.save();
+ctx.translate(crab.x, h - 9);
+if (crab.vx < 0) {
+ctx.scale(-1, 1);
+}
+ctx.font = "bold " + crab.size + "px monospace";
+ctx.fillStyle = crab.color;
+ctx.textAlign = "center";
+ctx.textBaseline = "bottom";
+ctx.fillText(crab.shape, 0, 0);
+ctx.restore();
+}
 
-        const grad = ctx.createLinearGradient(0, 0, 0, h);
-        grad.addColorStop(0, "#092234");
-        grad.addColorStop(1, "#041019");
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, w, h);
+if (shrimp) {
+shrimp.x += shrimp.vx;
+shrimp.hopPhase += 0.08;
+const hopY = Math.abs(Math.sin(shrimp.hopPhase)) * 3.5;
 
-        ctx.fillStyle = "#0b2530";
-        ctx.fillRect(0, h - 10, w, 10);
+const margin = 35;
+if (shrimp.x > w - margin) {
+shrimp.x = w - margin;
+shrimp.vx = -shrimp.speed;
+} else if (shrimp.x < margin) {
+shrimp.x = margin;
+shrimp.vx = shrimp.speed;
+}
 
-        drawCorals();
-        drawSeaweed();
-        updateAndDrawBottomCreatures();
+ctx.save();
+ctx.translate(shrimp.x, h - 10 - hopY);
+if (shrimp.vx < 0) {
+ctx.scale(-1, 1);
+}
+ctx.font = "bold " + shrimp.size + "px monospace";
+ctx.fillStyle = shrimp.color;
+ctx.textAlign = "center";
+ctx.textBaseline = "bottom";
+ctx.fillText(shrimp.shape, 0, 0);
+ctx.restore();
+}
+}
 
-        ctx.font = "bold 14px monospace";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        for (let i = foods.length - 1; i >= 0; i--) {
-          const f = foods[i];
-          if (f.eaten) {
-            foods.splice(i, 1);
-            continue;
-          }
+function loop() {
+time += 0.02;
 
-          if (f.y < h - 16) {
-            f.y += f.vy;
-            f.x += Math.sin(time * 1.5 + i) * 0.15;
-          }
+const grad = ctx.createLinearGradient(0, 0, 0, h);
+grad.addColorStop(0, "#092234");
+grad.addColorStop(1, "#041019");
+ctx.fillStyle = grad;
+ctx.fillRect(0, 0, w, h);
 
-          ctx.fillStyle = "#f4a261";
-          ctx.fillText("*", f.x, f.y);
-        }
+ctx.fillStyle = "#0b2530";
+ctx.fillRect(0, h - 10, w, 10);
 
-        for (let i = bubbles.length - 1; i >= 0; i--) {
-          const b = bubbles[i];
-          b.y -= b.vy;
-          b.x += b.drift + Math.sin(time * 1.5 + i) * 0.15;
-          b.alpha -= 0.0025;
+drawCorals();
+drawSeaweed();
+updateAndDrawBottomCreatures();
 
-          ctx.beginPath();
-          ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-          ctx.strokeStyle = "rgba(160, 230, 255, " + Math.max(b.alpha, 0) + ")";
-          ctx.lineWidth = 1.1;
-          ctx.stroke();
+ctx.font = "bold 14px monospace";
+ctx.textAlign = "center";
+ctx.textBaseline = "middle";
+for (let i = foods.length - 1; i >= 0; i--) {
+const f = foods[i];
+if (f.eaten) {
+foods.splice(i, 1);
+continue;
+}
 
-          if (b.y < -15 || b.alpha <= 0) {
-            bubbles.splice(i, 1);
-          }
-        }
-        for (let i = 0; i < fishes.length; i++) {
-          const fish = fishes[i];
+if (f.y < h - 16) {
+f.y += f.vy;
+f.x += Math.sin(time * 1.5 + i) * 0.15;
+}
 
-          if (fish.scaredTimer > 0) {
-            fish.scaredTimer--;
-            fish.x += fish.vx;
-            fish.y += Math.sin(time * 4 + fish.phase) * 0.8;
-            fish.baseY = fish.y;
+ctx.fillStyle = "#f4a261";
+ctx.fillText("*", f.x, f.y);
+}
 
-            const margin = 42;
-            if (fish.x > w - margin) {
-              fish.x = w - margin;
-              fish.vx = -Math.abs(fish.vx);
-            } else if (fish.x < margin) {
-              fish.x = margin;
-              fish.vx = Math.abs(fish.vx);
-            }
+for (let i = bubbles.length - 1; i >= 0; i--) {
+const b = bubbles[i];
+b.y -= b.vy;
+b.x += b.drift + Math.sin(time * 1.5 + i) * 0.15;
+b.alpha -= 0.0025;
 
-            if (fish.scaredTimer === 0) {
-              fish.vx = (fish.vx >= 0 ? 1 : -1) * fish.speed;
-            }
-          } else if (fish.targetFood && !fish.targetFood.eaten) {
-            const dx = fish.targetFood.x - fish.x;
-            const dy = fish.targetFood.y - fish.y;
-            const dist = Math.hypot(dx, dy);
+ctx.beginPath();
+ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+ctx.strokeStyle = "rgba(160, 230, 255, " + Math.max(b.alpha, 0) + ")";
+ctx.lineWidth = 1.1;
+ctx.stroke();
 
-            if (dist > 12) {
-              const chaseSpeed = fish.speed * 1.75;
-              fish.vx = (dx / dist) * chaseSpeed;
-              fish.x += fish.vx;
-              fish.y += (dy / dist) * chaseSpeed;
-              fish.baseY = fish.y;
-            } else {
-              fish.targetFood.eaten = true;
-              fish.targetFood = null;
-              spawnBubble(fish.x, fish.y - 6);
-              fish.vx = (fish.vx >= 0 ? 1 : -1) * fish.speed;
-            }
-          } else {
-            fish.targetFood = null;
-            fish.x += fish.vx;
-            fish.y = fish.baseY + Math.sin(time * 1.1 + fish.phase) * 10;
+if (b.y < -15 || b.alpha <= 0) {
+bubbles.splice(i, 1);
+}
+}
 
-            const margin = 42;
-            if (fish.x > w - margin) {
-              fish.x = w - margin;
-              fish.vx = -Math.abs(fish.speed);
-            } else if (fish.x < margin) {
-              fish.x = margin;
-              fish.vx = Math.abs(fish.speed);
-            }
-          }
+for (let i = 0; i < fishes.length; i++) {
+const fish = fishes[i];
 
-          if (Math.random() < 0.008) {
-            const mouthX = fish.vx >= 0 ? fish.x + 20 : fish.x - 20;
-            spawnBubble(mouthX, fish.y - 3);
-          }
-          ctx.save();
-          ctx.translate(fish.x, fish.y);
-          if (fish.vx < 0) {
-            ctx.scale(-1, 1);
-          }
-          ctx.font = "bold " + fish.size + "px monospace";
-          ctx.fillStyle = fish.color;
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillText(fish.shape, 0, 0);
-          ctx.restore();
-        }
+if (fish.scaredTimer > 0) {
+fish.scaredTimer--;
+fish.x += fish.vx;
+fish.y += Math.sin(time * 4 + fish.phase) * 0.8;
+fish.baseY = fish.y;
 
-        requestAnimationFrame(loop);
-      }
+const margin = 42;
+if (fish.x > w - margin) {
+fish.x = w - margin;
+fish.vx = -Math.abs(fish.vx);
+} else if (fish.x < margin) {
+fish.x = margin;
+fish.vx = Math.abs(fish.vx);
+}
 
-      loop();
-    })();
-  </script>
+if (fish.scaredTimer === 0) {
+fish.vx = (fish.vx >= 0 ? 1 : -1) * fish.speed;
+}
+} else if (fish.targetFood && !fish.targetFood.eaten) {
+const dx = fish.targetFood.x - fish.x;
+const dy = fish.targetFood.y - fish.y;
+const dist = Math.hypot(dx, dy);
+
+if (dist > 12) {
+const chaseSpeed = fish.speed * 1.75;
+fish.vx = (dx / dist) * chaseSpeed;
+fish.x += fish.vx;
+fish.y += (dy / dist) * chaseSpeed;
+fish.baseY = fish.y;
+} else {
+fish.targetFood.eaten = true;
+fish.targetFood = null;
+spawnBubble(fish.x, fish.y - 6);
+fish.vx = (fish.vx >= 0 ? 1 : -1) * fish.speed;
+}
+} else {
+fish.targetFood = null;
+fish.x += fish.vx;
+fish.y = fish.baseY + Math.sin(time * 1.1 + fish.phase) * 10;
+
+const margin = 42;
+if (fish.x > w - margin) {
+fish.x = w - margin;
+fish.vx = -Math.abs(fish.speed);
+} else if (fish.x < margin) {
+fish.x = margin;
+fish.vx = Math.abs(fish.speed);
+}
+}
+
+if (Math.random() < 0.008) {
+const mouthX = fish.vx >= 0 ? fish.x + 20 : fish.x - 20;
+spawnBubble(mouthX, fish.y - 3);
+}
+
+ctx.save();
+ctx.translate(fish.x, fish.y);
+if (fish.vx < 0) {
+ctx.scale(-1, 1);
+}
+ctx.font = "bold " + fish.size + "px monospace";
+ctx.fillStyle = fish.color;
+ctx.textAlign = "center";
+ctx.textBaseline = "middle";
+ctx.fillText(fish.shape, 0, 0);
+ctx.restore();
+}
+
+requestAnimationFrame(loop);
+}
+
+loop();
+})();
+</script>
 </body>
 </html>
